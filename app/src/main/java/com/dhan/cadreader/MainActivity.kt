@@ -61,7 +61,6 @@ class MainActivity : Activity() {
         waitingDialog.setMessage("请等待...")
         waitingDialog.isIndeterminate = true
         waitingDialog.setCancelable(false)
-
     }
 
     //var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/test.avg"
