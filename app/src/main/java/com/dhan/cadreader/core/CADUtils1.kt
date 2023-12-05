@@ -25,12 +25,11 @@ import java.lang.Double.min
  * @Version:        1.0
  */
 
-class CADUtils {
+class CADUtils1 {
     var TAG = "CADUtils输出："
     var combins = HashMap<String, Shape>() //组合对象列表
     var shapes = ArrayList<Shape>() //元素对象列表
     var textStore: HashMap<Char, Pair<Int, FloatArray>> = HashMap<Char, Pair<Int, FloatArray>>()//CAD文字字库
-    var isAdd: Boolean = false
     fun processCadFile(context: Context, srcfile: String, destcafile: String): ArrayList<Shape> {
         /* val destFile = File(destcafile)
          if (destFile.exists())
@@ -41,7 +40,7 @@ class CADUtils {
 
         AvgEntityList.forEach {//先把组合元素遍历出来
             if (it.et == 808) {
-                var shape = buildShape(0.0, 0.0, 1.toDouble(), 1.toDouble(), it)
+                var shape = buildShape( it)
                 combins.put(it.infos, shape)
             }
         }
@@ -51,10 +50,9 @@ class CADUtils {
                    combins.put(it.infos, shape)//map覆盖更新
                }
            }*/
-        isAdd = true
         AvgEntityList.forEach {//整合存储普通元素
             if (it.et != 808) {
-                var shape = buildShape(0.0, 0.0, 1.toDouble(), 1.toDouble(), it)
+                var shape = buildShape( it)
                 if (shape != null) {
                     shapes.add(shape)
                 }
@@ -85,7 +83,7 @@ class CADUtils {
     val cdpi = 1
 
     val deltl = 5.0   //触摸点到线的最小选定范围值
-    private fun buildShape(sourceX: Double, sourceY: Double, xScal: Double, yScal: Double, shapeOrigin: Shape): Shape {
+    private fun buildShape( shapeOrigin: Shape): Shape {
         lateinit var shape: Shape
         shape = Shape()
         shape.handle = shapeOrigin.handle
@@ -99,8 +97,8 @@ class CADUtils {
         }*/
         if (shape.infoList.size > 2) {
 
-            shape.x = sourceX + shape.infoList[0].toDouble() * cdpi * xScal //基准位置（3:圆心,12:椭圆中心点,15:组合,17:起始点,18:折线,19:,25:,30:,31:圆心）
-            shape.y = sourceY + shape.infoList[1].toDouble() * cdpi * yScal
+            shape.x = shape.infoList[0].toDouble() * cdpi  //基准位置（3:圆心,12:椭圆中心点,15:组合,17:起始点,18:折线,19:,25:,30:,31:圆心）
+            shape.y =  shape.infoList[1].toDouble() * cdpi
 
         }
         when (shapeOrigin.et) {
@@ -137,29 +135,16 @@ class CADUtils {
                 shape.blk_name = shape.infoList[5].replace("--mblankm--", " ")
 
                 shapeOrigin.ents.forEach {
-                    shape.ents.add(buildShape(shape.x, shape.y, xScal, yScal, it))
+                    shape.ents.add(buildShape( it))
                 }
 
-                //链接待插入的模板
-                if (isAdd) {
-                    if (combins.contains(shape.blk_name)) {
-                        val tb = combins[shape.blk_name]
-                        Log.e(TAG, "匹配到组合${shape.blk_name},开始重定位组合坐标")
-                        var sha = buildShape(shape.x, shape.y, shape.blk_xscale, shape.blk_yscale, tb!!)
-                        shapes.add(sha)//将组合808添加到根目录
-                        //计算组合的区域
-                        shape.disrect[0] = min(sha.disrect[0], shape.disrect[0])
-                        shape.disrect[1] = min(sha.disrect[1], shape.disrect[1])
-                        shape.disrect[2] = max(sha.disrect[2], shape.disrect[2])
-                        shape.disrect[3] = max(sha.disrect[3], shape.disrect[3])
-                    }
-                }
+
             }
 
             17 -> {//线
 
-                shape.endX = sourceX + shape.infoList[2].toDouble() * cdpi* xScal
-                shape.endY = sourceY + shape.infoList[3].toDouble() * cdpi* yScal
+                shape.endX = shape.infoList[2].toDouble() * cdpi
+                shape.endY =  shape.infoList[3].toDouble() * cdpi
 
                 shape.line_point = FloatArray(4)
                 shape.line_point[0] = shape.x.toFloat() * cdpi
@@ -183,28 +168,16 @@ class CADUtils {
                 shape.disrect[1] = shape.y
                 shape.disrect[3] = shape.y
                 //遍历折线的点的坐标集合并实时计算范围
-               /* shape.infoList.forEachIndexed { index, s ->
-                    if (index % 2 == 0) {
-                        val tv = s.toDouble() * cdpi + sourceX
-                        shape.linepoints_cad.add(tv)
-                        shape.disrect[0] = min(tv, shape.disrect[0])
-                        shape.disrect[2] = max(tv, shape.disrect[2])
-                    } else {
-                        val tv = s.toDouble() * cdpi + sourceY
-                        shape.linepoints_cad.add(tv)
-                        shape.disrect[1] = min(tv, shape.disrect[1])
-                        shape.disrect[3] = max(tv, shape.disrect[3])
-                    }
-                }*/
+
                 //计算放缩后的值
                 shape.infoList.forEachIndexed { index, s ->
                         if (index % 2 == 0) {
-                            val tv = s.toDouble() * cdpi*xScal + sourceX
+                            val tv = s.toDouble() * cdpi
                             shape.linepoints_cad.add(tv)
                             shape.disrect[0] = min(tv, shape.disrect[0])
                             shape.disrect[2] = max(tv, shape.disrect[2])
                         } else {
-                            val tv = s.toDouble() * cdpi*yScal + sourceY
+                            val tv = s.toDouble() * cdpi
                             shape.linepoints_cad.add(tv)
                             shape.disrect[1] = min(tv, shape.disrect[1])
                             shape.disrect[3] = max(tv, shape.disrect[3])
@@ -213,23 +186,7 @@ class CADUtils {
 
 
 
-               /* if (xScal != 1.toDouble() || yScal != 1.toDouble()) {
-                    shape.linepoints_cad.forEachIndexed { index, d ->
-                        if (index <= 1) {
-                            if (index % 2 == 0) {
-                                shape.linepoints_cad[index] =sourceX+shape.linepoints_cad[index] *xScal
-                            } else {
-                                shape.linepoints_cad[index] =sourceY+shape.linepoints_cad[index] *yScal
-                            }
-                        } else {
-                            if (index % 2 == 0) {
-                                shape.linepoints_cad[index] = shape.linepoints_cad[index - 2] + (shape.linepoints_cad[index] - shape.linepoints_cad[index - 2]) * xScal
-                            } else {
-                                shape.linepoints_cad[index] = shape.linepoints_cad[index - 2] + (shape.linepoints_cad[index] - shape.linepoints_cad[index - 2]) * yScal
-                            }
-                        }
-                    }
-                }*/
+
                 //需要将cad的连续点数组，转换成android canvas的点线段数组.将cad中[x,y,x1,y1,x2,y2]转换为[x,y,x1,y1,x1,y1,x2,y2]这种格式
                 shape.polyline_array = FloatArray((shape.linepoints_cad.size / 2 - 1) * 4) { index ->
                     var gid = index / 4
@@ -326,10 +283,8 @@ class CADUtils {
 
             808 -> {//组合的模板
                 Log.e(TAG, "-----------------------------------------")
-                // shape.father_xbase+=sourceX
-                // shape.father_ybase+=sourceY
                 shapeOrigin.ents.forEach {
-                    var sha = buildShape(sourceX, sourceY, xScal, yScal,  it)
+                    var sha = buildShape(it)
                     shape.ents.add(sha)
                     Log.e(TAG, "父类型:${shape.et},info:${shape.infos} ;正在添加==" + sha.toString() + ";ent长度:${shape.ents.size}")
                     shape.disrect[0] = min(sha.disrect[0], shape.disrect[0])

@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,6 +22,7 @@ import com.dhan.cadreader.bean.Shape;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 
 import kotlin.Pair;
 
@@ -36,33 +38,37 @@ import kotlin.Pair;
  * @UpdateRemark:
  * @Version: 1.0
  */
-public class CadView extends View implements ScaleGestureDetector.OnScaleGestureListener {
-    private static final String TAG = CadView.class.getSimpleName();
+public class CadView1 extends View implements ScaleGestureDetector.OnScaleGestureListener {
+    private static final String TAG = CadView1.class.getSimpleName();
     private Context context;
     float SCALE_MAX;//最大放大倍数
     float SCALE_MIN;//最小缩小倍数
     private ScaleGestureDetector mScaleGestureDetector = null;
 
-    public CadView(Context context) {
+    public CadView1(Context context) {
         super(context);
     }
 
-    public CadView(Context context, @Nullable AttributeSet attrs) {
+    public CadView1(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         this.context = context;
         init();//准备工作
         mScaleGestureDetector = new ScaleGestureDetector(context, this);
     }
 
-    public CadView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public CadView1(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
     }
 
     ArrayList<Shape> shapes;
+    HashMap<String,Shape>  combins;
 
     public void setData(ArrayList<Shape> shapes) {
         this.shapes = shapes;
+    }
+    public void setCombins(HashMap<String,Shape> combins) {
+        this.combins = combins;
     }
 
     private Paint magicPaint;
@@ -149,11 +155,17 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
         float scalY = height / maxy;
         initScale = scalX > scalY ? scalY : scalX;
         SCALE_MIN = initScale;
+        SCALE_MIN=1f;
+        initScale = 1f;
         SCALE_MAX = initScale * 500; //最大放大50倍
         viewLastScal = initScale;//初始化叠加放缩量
 
         if (initScale <= 1) {//图像过大，则进行缩小，图像过小，使用0.8倍初始放大量
             scale(initScale, shapes);
+
+            for (String key : combins.keySet()) {
+                scale(initScale,combins.get(key).ents);
+            }
         } else {
             scale(initScale * scalpercent, shapes);
         }
@@ -179,6 +191,10 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     break;
                 case 15://插入点
                     moveView(shape.ents);
+                  /*  if (combins.containsKey(shape.blk_name)) {
+                        Shape tb = combins.get(shape.blk_name);
+                        moveView(tb.ents);
+                    }*/
                     break;
                 case 17:
                     shape.endY += height;
@@ -236,6 +252,10 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     break;
                 case 15:
                     scale(scal, shape.ents);
+                    if (combins.containsKey(shape.blk_name)) {
+                        Shape tb = combins.get(shape.blk_name);
+                        scale(scal ,tb.ents);
+                    }
                     break;
                 case 17://直线
                     shape.endX = shape.endX * scal;
@@ -283,12 +303,12 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
             return;
         }
         for (Shape shape : shapeLists) {
-            canvas.save();
-            if (shape.disrect[0] + getLeft() >= width || shape.disrect[1] + getTop() >= height || shape.disrect[2] + getLeft() <= 0 || shape.disrect[3] + getTop() <= 0) {
+            //canvas.save();
+           /* if (shape.disrect[0] + getLeft() >= width || shape.disrect[1] + getTop() >= height || shape.disrect[2] + getLeft() <= 0 || shape.disrect[3] + getTop() <= 0) {
                 //Log.e(TAG, "元素隐藏了，省略绘制，提高渲染效率");
                 canvas.restore();
                 continue;
-            }
+            }*/
             if (shape.color != 0) {
                 magicPaint.setColor(shape.color);
                 textPaint.setColor(shape.color);
@@ -302,12 +322,26 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     canvas.drawCircle(new Double(shape.x).floatValue(), new Double(shape.y).floatValue(), new Double(shape.radius).floatValue(), magicPaint);
                     break;
                 case 12://椭圆
+                    canvas.save();
                     canvas.rotate((float) (shape.blk_angle * 180 / Math.PI));
                     RectF rec = new RectF(shape.disrect[0].floatValue(), shape.disrect[1].floatValue(), shape.disrect[2].floatValue(), shape.disrect[3].floatValue());
                     canvas.drawOval(rec, magicPaint);
+                    canvas.restore();
                     break;
                 case 15://插入点
                     drawCadView(canvas, shape.ents);
+
+                    //链接待插入的模板
+                    if (combins.containsKey(shape.blk_name)) {
+                        canvas.save();
+                        canvas.translate((float) shape.x, (float) shape.y);
+                        canvas.rotate((float) (shape.blk_angle * 180 / Math.PI));
+                        canvas.scale((float)shape.blk_xscale, 1/(float)shape.blk_yscale);
+                        Shape tb = combins.get(shape.blk_name);
+                        Log.e(TAG, "匹配到组合${shape.blk_name},开始重定位组合坐标");
+                         drawCadView(canvas ,tb.ents);
+                        canvas.restore();
+                    }
                     break;
                 case 17:
                     canvas.drawLines(shape.line_point, magicPaint);
@@ -316,6 +350,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     canvas.drawLines(shape.polyline_array, magicPaint);
                     break;
                 case 19://多行文字
+                    canvas.save();
                     textPaint.setTextAlign(Paint.Align.LEFT);
                     textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
                     textPaint.setTextSize((float) shape.text_height * viewLastScal * textfactor);
@@ -326,8 +361,10 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     // }
 
                     canvas.drawText(shape.textinfo, 0, 0, textPaint);
+                    canvas.restore();
                     break;
                 case 25://单行文字
+                    canvas.save();
                     if (shape.text_height < needshow) return;//如果太小，则忽略不显示
                     textPaint.setTextAlign(Paint.Align.LEFT);
                     textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
@@ -344,6 +381,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     } else {
                         canvas.drawText(shape.textinfo, (float) shape.x, (float) shape.y, textPaint);
                     }
+                    canvas.restore();
                     break;
                 case 31:
                     RectF oval = new RectF(shape.disrect[0].floatValue(), shape.disrect[1].floatValue(), shape.disrect[2].floatValue(), shape.disrect[3].floatValue());
@@ -352,6 +390,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     break;
                 case 101:
                 case 202:
+                    canvas.save();
                     if (shape.text_height < needshow) return;//如果太小，则忽略不显示
                     textPaint.setTextAlign(Paint.Align.LEFT);
                     textPaint.setStyle(Paint.Style.FILL_AND_STROKE);
@@ -367,6 +406,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     } else {
                         canvas.drawText(test, (float) shape.x, (float) shape.y, textPaint);
                     }
+                    canvas.restore();
                     break;
 
                 case 808:
@@ -388,11 +428,11 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
             }
             //重置画笔..
             //magicPaint.setTextSize(1);
-            canvas.restore();
+           // canvas.restore();
         }
     }
 
-    CADUtils cadUtils = new CADUtils();
+    CADUtils1 cadUtils = new CADUtils1();
     float percharwidth = 30f;
     HashMap<Character, Pair<Integer, float[]>> hztxt = cadUtils.getTextStore();
 
@@ -433,12 +473,12 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
         if (viewLastScal * scaleFactor > SCALE_MAX) {//超限，太大了
             //viewLastScal = SCALE_MAX;
             scaleFactor = 1;
-            //Toast.makeText(context, "您已放大到最大级别", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "您已放大到最大级别", Toast.LENGTH_SHORT).show();
             //return true;
         } else if (viewLastScal * scaleFactor < SCALE_MIN) {//太小了
             //viewLastScal = SCALE_MIN;
             scaleFactor = 1;
-            //Toast.makeText(context, "您已缩小到原始大小", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "您已缩小到原始大小", Toast.LENGTH_SHORT).show();
             //return true;
         }
         viewLastScal = viewLastScal * scaleFactor;

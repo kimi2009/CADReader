@@ -11,7 +11,9 @@ import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.TypeReference
 import com.dhan.cadreader.bean.Shape
 import com.dhan.cadreader.core.CADUtils
+import com.dhan.cadreader.core.CADUtils1
 import com.dhan.cadreader.core.CadView
+import com.dhan.cadreader.core.CadView1
 import com.dhan.cadreader.util.AppExecutors
 import com.dhan.cadreader.util.CheckPermissionUtils
 import java.io.File
@@ -23,6 +25,7 @@ import java.util.ArrayList
 
 class MainActivity : Activity() {
     var context = this@MainActivity
+    val flag = 1
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,12 +47,14 @@ class MainActivity : Activity() {
     }
 
     lateinit var cadview: CadView
+    //lateinit var cadview: CadView1
     private fun init() {
-        // var jx = findViewById<Button>(R.id.jx)
-        cadview = findViewById<CadView>(R.id.cadview)
-        /* jx.setOnClickListener {
+        if(flag==1){
+            cadview = findViewById<CadView>(R.id.cadview)
+        }else{
+            // cadview = findViewById<CadView1>(R.id.cadview)
+        }
 
-         }*/
         initDialog()
         jx()
     }
@@ -64,23 +69,39 @@ class MainActivity : Activity() {
     }
 
     //var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/test.avg"
-    //var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/辉煌演示中心.avg"
-     var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/南关双线轨道电路及电缆径路图.avg"
+    // var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/辉煌演示中心.avg"
+
+    var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/南关双线轨道电路及电缆径路图.avg"
     var cacheFile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/NGZ/南关双线轨道电路及电缆径路图.avg"
     var shapes: ArrayList<Shape>? = null
+    var combins: HashMap<String, Shape>? = null
     fun jx() {
         waitingDialog.show()
 
         AppExecutors.getInstance().diskIO().execute {
-            shapes = CADUtils().processCadFile(context, srcfile, cacheFile)
-            AppExecutors.getInstance().mainThread().execute {
-                doNext()
+            if (flag == 1) {
+                var cu = CADUtils()
+                shapes = cu.processCadFile(context, srcfile, cacheFile)
+                combins = cu.combins
+                AppExecutors.getInstance().mainThread().execute {
+                    doNext()
+                }
+            } else {
+                var cu = CADUtils1()
+                shapes = cu.processCadFile(context, srcfile, cacheFile)
+                combins = cu.combins
+                AppExecutors.getInstance().mainThread().execute {
+                    doNext()
+                }
             }
         }
         //LinearLayout groupView = findViewById(R.id.groupView);
     }
 
     private fun doNext() {
+        if (flag!=1){
+            //cadview.setCombins(combins)
+        }
         cadview.setData(shapes)
         cadview.initData()
         cadview.invalidate()
