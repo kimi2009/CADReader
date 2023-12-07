@@ -92,7 +92,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
         }
         ArrayList xList = new ArrayList<Float>();
         ArrayList yList = new ArrayList<Float>();
-        initBoundary(0, 0, shapes, xList, yList);
+        initBoundary(shapes, xList, yList);
 
         maxx = (float) Collections.max(xList);
         maxy = -(float) Collections.min(yList);//此处由于cad左下角为(0,0),而安卓的原点在左上角，寻找Y的最大值，需要取负
@@ -101,12 +101,12 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
     }
 
     //递归计算所有图元的坐标值 用于计算边界
-    private void initBoundary(float baseX, float baseY, ArrayList<Shape> shapeLists, ArrayList<Float> xList, ArrayList<Float> yList) {
+    private void initBoundary(ArrayList<Shape> shapeLists, ArrayList<Float> xList, ArrayList<Float> yList) {
         for (Shape shape : shapeLists) {
-            xList.add((float) (baseX + shape.x + shape.disrect[0].floatValue()));
-            yList.add((float) (baseY + shape.y + shape.disrect[1].floatValue()));
-            xList.add((float) (baseX + shape.x + shape.disrect[2].floatValue()));
-            yList.add((float) (baseY + shape.y + shape.disrect[3].floatValue()));
+            xList.add((float) (shape.disrect[0].floatValue()));
+            yList.add((float) (shape.disrect[1].floatValue()));
+            xList.add((float) (shape.disrect[2].floatValue()));
+            yList.add((float) (shape.disrect[3].floatValue()));
         }
     }
 
@@ -157,38 +157,50 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
         } else {
             scale(initScale * scalpercent, shapes);
         }
+        //计算图形向下移动的最优距离
+        ArrayList yList = new ArrayList<Float>();
+        initBoundaryByscalEnd(shapes, yList);
+        float cadViewHeight = -(float) Collections.min(yList);
+        float moveY = height / 2 + cadViewHeight / 2; //使图形尽量居中
         //图像放缩到一屏后，整体将图形向下移动到安卓屏幕原点，也就是将图形从第一象限移动到第四象限
-        moveView(shapes);
+        moveView(moveY, shapes);
 
         viewWidth = width;//首次初始化，view的宽高设置为屏幕的宽高
         viewHeight = height;
     }
 
-    private void moveView(ArrayList<Shape> shapeLists) {
+    private void initBoundaryByscalEnd(ArrayList<Shape> shapeLists, ArrayList<Float> yList) {
+        for (Shape shape : shapeLists) {
+            yList.add((float) (shape.disrect[1].floatValue()));
+            yList.add((float) (shape.disrect[3].floatValue()));
+        }
+    }
+
+    private void moveView(float moveHeight, ArrayList<Shape> shapeLists) {
         if (shapeLists == null) {
             return;
         }
         for (Shape shape : shapeLists) {
-            shape.y += height;
-            shape.disrect[1] += height;
-            shape.disrect[3] += height;
+            shape.y += moveHeight;
+            shape.disrect[1] += moveHeight;
+            shape.disrect[3] += moveHeight;
             switch (shape.et) {
                 case 3://圆只需要调整圆心
                     break;
                 case 12://椭圆
                     break;
                 case 15://插入点
-                    moveView(shape.ents);
+                    moveView(moveHeight, shape.ents);
                     break;
                 case 17:
-                    shape.endY += height;
-                    shape.line_point[1] += height;
-                    shape.line_point[3] += height;
+                    shape.endY += moveHeight;
+                    shape.line_point[1] += moveHeight;
+                    shape.line_point[3] += moveHeight;
                     break;
                 case 18:
                     for (int i = 0; i < shape.polyline_array.length; i++) {
                         if (i % 2 != 0) {
-                            shape.polyline_array[i] += height;
+                            shape.polyline_array[i] += moveHeight;
                         }
                     }
                     break;
@@ -207,7 +219,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                    /* for (int i = 0; i < shape.ents.size(); i++) {
                         shape.ents.get(i)
                     }*/
-                    moveView(shape.ents);
+                    moveView(moveHeight, shape.ents);
                     break;
 
             }
@@ -339,7 +351,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                         float angle = (float) (shape.blk_angle * 180 / Math.PI);
                         canvas.translate((float) shape.x, (float) shape.y);
                         canvas.rotate(angle);
-                        canvas.drawText(shape.textinfo, 0,0, textPaint);
+                        canvas.drawText(shape.textinfo, 0, 0, textPaint);
 
                     } else {
                         canvas.drawText(shape.textinfo, (float) shape.x, (float) shape.y, textPaint);
@@ -363,7 +375,7 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                         float angle = (float) (shape.blk_angle * 180 / Math.PI);
                         canvas.translate((float) shape.x, (float) shape.y);
                         canvas.rotate(angle);
-                        canvas.drawText(test, 0,0, textPaint);
+                        canvas.drawText(test, 0, 0, textPaint);
                     } else {
                         canvas.drawText(test, (float) shape.x, (float) shape.y, textPaint);
                     }
@@ -387,7 +399,8 @@ public class CadView extends View implements ScaleGestureDetector.OnScaleGesture
                     break;
             }
             //重置画笔..
-            //magicPaint.setTextSize(1);
+            // magicPaint.setColor(Color.RED);
+            //canvas.drawRect(shape.disrect[0].floatValue(), shape.disrect[1].floatValue(), shape.disrect[2].floatValue(), shape.disrect[3].floatValue(), magicPaint);
             canvas.restore();
         }
     }

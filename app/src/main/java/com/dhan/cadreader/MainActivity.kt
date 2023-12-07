@@ -68,10 +68,10 @@ class MainActivity : Activity() {
         waitingDialog.setCancelable(false)
     }
 
-    //var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/test.avg"
-    // var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/辉煌演示中心.avg"
+    // var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/test.avg"
+    //var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/辉煌演示中心.avg"
 
-    var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/南关双线轨道电路及电缆径路图.avg"
+     var srcfile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/HYZ/南关双线轨道电路及电缆径路图.avg"
     var cacheFile = Environment.getExternalStorageDirectory().absolutePath + "/cablemonitor/data/NGZ/南关双线轨道电路及电缆径路图.avg"
     var shapes: ArrayList<Shape>? = null
     var combins: HashMap<String, Shape>? = null

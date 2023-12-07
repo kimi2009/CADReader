@@ -139,7 +139,10 @@ class CADUtils {
                 shapeOrigin.ents.forEach {
                     shape.ents.add(buildShape(shape.x, shape.y, xScal, yScal, it))
                 }
-
+                shape.disrect[0] = shape.x
+                shape.disrect[1] = shape.y
+                shape.disrect[2] = shape.x
+                shape.disrect[3] = shape.y
                 //链接待插入的模板
                 if (isAdd) {
                     if (combins.contains(shape.blk_name)) {
@@ -158,8 +161,8 @@ class CADUtils {
 
             17 -> {//线
 
-                shape.endX = sourceX + shape.infoList[2].toDouble() * cdpi* xScal
-                shape.endY = sourceY + shape.infoList[3].toDouble() * cdpi* yScal
+                shape.endX = sourceX + shape.infoList[2].toDouble() * cdpi * xScal
+                shape.endY = sourceY + shape.infoList[3].toDouble() * cdpi * yScal
 
                 shape.line_point = FloatArray(4)
                 shape.line_point[0] = shape.x.toFloat() * cdpi
@@ -183,53 +186,52 @@ class CADUtils {
                 shape.disrect[1] = shape.y
                 shape.disrect[3] = shape.y
                 //遍历折线的点的坐标集合并实时计算范围
-               /* shape.infoList.forEachIndexed { index, s ->
+                /* shape.infoList.forEachIndexed { index, s ->
+                     if (index % 2 == 0) {
+                         val tv = s.toDouble() * cdpi + sourceX
+                         shape.linepoints_cad.add(tv)
+                         shape.disrect[0] = min(tv, shape.disrect[0])
+                         shape.disrect[2] = max(tv, shape.disrect[2])
+                     } else {
+                         val tv = s.toDouble() * cdpi + sourceY
+                         shape.linepoints_cad.add(tv)
+                         shape.disrect[1] = min(tv, shape.disrect[1])
+                         shape.disrect[3] = max(tv, shape.disrect[3])
+                     }
+                 }*/
+                //计算放缩后的值
+                shape.infoList.forEachIndexed { index, s ->
                     if (index % 2 == 0) {
-                        val tv = s.toDouble() * cdpi + sourceX
+                        val tv = s.toDouble() * cdpi * xScal + sourceX
                         shape.linepoints_cad.add(tv)
                         shape.disrect[0] = min(tv, shape.disrect[0])
                         shape.disrect[2] = max(tv, shape.disrect[2])
                     } else {
-                        val tv = s.toDouble() * cdpi + sourceY
+                        val tv = s.toDouble() * cdpi * yScal + sourceY
                         shape.linepoints_cad.add(tv)
                         shape.disrect[1] = min(tv, shape.disrect[1])
                         shape.disrect[3] = max(tv, shape.disrect[3])
                     }
-                }*/
-                //计算放缩后的值
-                shape.infoList.forEachIndexed { index, s ->
-                        if (index % 2 == 0) {
-                            val tv = s.toDouble() * cdpi*xScal + sourceX
-                            shape.linepoints_cad.add(tv)
-                            shape.disrect[0] = min(tv, shape.disrect[0])
-                            shape.disrect[2] = max(tv, shape.disrect[2])
-                        } else {
-                            val tv = s.toDouble() * cdpi*yScal + sourceY
-                            shape.linepoints_cad.add(tv)
-                            shape.disrect[1] = min(tv, shape.disrect[1])
-                            shape.disrect[3] = max(tv, shape.disrect[3])
-                        }
                 }
 
 
-
-               /* if (xScal != 1.toDouble() || yScal != 1.toDouble()) {
-                    shape.linepoints_cad.forEachIndexed { index, d ->
-                        if (index <= 1) {
-                            if (index % 2 == 0) {
-                                shape.linepoints_cad[index] =sourceX+shape.linepoints_cad[index] *xScal
-                            } else {
-                                shape.linepoints_cad[index] =sourceY+shape.linepoints_cad[index] *yScal
-                            }
-                        } else {
-                            if (index % 2 == 0) {
-                                shape.linepoints_cad[index] = shape.linepoints_cad[index - 2] + (shape.linepoints_cad[index] - shape.linepoints_cad[index - 2]) * xScal
-                            } else {
-                                shape.linepoints_cad[index] = shape.linepoints_cad[index - 2] + (shape.linepoints_cad[index] - shape.linepoints_cad[index - 2]) * yScal
-                            }
-                        }
-                    }
-                }*/
+                /* if (xScal != 1.toDouble() || yScal != 1.toDouble()) {
+                     shape.linepoints_cad.forEachIndexed { index, d ->
+                         if (index <= 1) {
+                             if (index % 2 == 0) {
+                                 shape.linepoints_cad[index] =sourceX+shape.linepoints_cad[index] *xScal
+                             } else {
+                                 shape.linepoints_cad[index] =sourceY+shape.linepoints_cad[index] *yScal
+                             }
+                         } else {
+                             if (index % 2 == 0) {
+                                 shape.linepoints_cad[index] = shape.linepoints_cad[index - 2] + (shape.linepoints_cad[index] - shape.linepoints_cad[index - 2]) * xScal
+                             } else {
+                                 shape.linepoints_cad[index] = shape.linepoints_cad[index - 2] + (shape.linepoints_cad[index] - shape.linepoints_cad[index - 2]) * yScal
+                             }
+                         }
+                     }
+                 }*/
                 //需要将cad的连续点数组，转换成android canvas的点线段数组.将cad中[x,y,x1,y1,x2,y2]转换为[x,y,x1,y1,x1,y1,x2,y2]这种格式
                 shape.polyline_array = FloatArray((shape.linepoints_cad.size / 2 - 1) * 4) { index ->
                     var gid = index / 4
@@ -329,13 +331,31 @@ class CADUtils {
                 // shape.father_xbase+=sourceX
                 // shape.father_ybase+=sourceY
                 shapeOrigin.ents.forEach {
-                    var sha = buildShape(sourceX, sourceY, xScal, yScal,  it)
+                    var sha = buildShape(sourceX, sourceY, xScal, yScal, it)
                     shape.ents.add(sha)
                     Log.e(TAG, "父类型:${shape.et},info:${shape.infos} ;正在添加==" + sha.toString() + ";ent长度:${shape.ents.size}")
-                    shape.disrect[0] = min(sha.disrect[0], shape.disrect[0])
-                    shape.disrect[1] = min(sha.disrect[1], shape.disrect[1])
-                    shape.disrect[2] = max(sha.disrect[2], shape.disrect[2])
-                    shape.disrect[3] = max(sha.disrect[3], shape.disrect[3])
+                    if (shape.disrect[0] != 0.0) {
+                        shape.disrect[0] = min(sha.disrect[0], shape.disrect[0])
+                    } else {
+                        shape.disrect[0] = sha.disrect[0]
+                    }
+                    if (shape.disrect[1] != 0.0) {
+                        shape.disrect[1] = min(sha.disrect[1], shape.disrect[1])
+                    } else {
+                        shape.disrect[1] = sha.disrect[1]
+                    }
+                    if (shape.disrect[2] != 0.0) {
+                        shape.disrect[2] = max(sha.disrect[2], shape.disrect[2])
+                    } else {
+                        shape.disrect[2] = sha.disrect[2]
+                    }
+
+                    if (shape.disrect[3] != 0.0) {
+                        shape.disrect[3] = max(sha.disrect[3], shape.disrect[3])
+                    } else {
+                        shape.disrect[3] = sha.disrect[3]
+                    }
+
                 }
             }
         }
